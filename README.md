@@ -33,7 +33,7 @@ void f1(string name) {
 }
 ```
 
-A more flexible approach, embodied by the classic `printf` family of C functions and carried over to D standard library functions such as `std.format.format` and `std.stdio.writefln`, is to use *format strings* that provide the string fragments intermixed with conventionally defined *formatting specifiers*. Specialized functions take such format strings followed by the data to be formatted, and replace each formatting directive with suitably formatted data:
+A more flexible approach, embodied by the classic `printf` family of C functions and carried over to D standard library functions such as `std.format.format` and `std.stdio.writefln`, is to use *format strings* that provide the string fragments intermixed with conventionally defined *formatting specifiers*. Specialized functions take such format strings followed by the arguments to be formatted and replace each formatting directive with suitably formatted data:
 
 ```d
 void f2(string name) {
@@ -43,7 +43,7 @@ void f2(string name) {
 }
 ```
 
-Other examples of the format-string style are SQL prepared statements and string templates for formatting HTML documents. The convention used for format specifiers is defined by the respective APIs:
+Other examples of the format-string style are string templates for formatting HTML documents and SQL prepared statements. The convention used for format specifiers is defined by the respective APIs:
 
 ```d
 void f2(string name) {
@@ -53,7 +53,7 @@ void f2(string name) {
 }
 ```
 
-Both approaches have pros and cons. The format-string style observes the important principle of [separating logic from display](https://www.cs.usfca.edu/~parrt/papers/mvc.templates.pdf). This principle is well respected in a variety of programming paradigms, such as Model-View-Controller, web development, and UX design. Localization and internationalization applications and libraries can store all display artifacts in complete separation from program logic and swap them as needed. In a perfect separation model, there is no access to computation in the formatting strings at all, even as much as a simple addition or (in the case of `printf` format strings) even the names of the variables being printed. The disadvantage of the format-string style is that the expressions to be formatted appear lexically *after* the (possibly long) format string, which makes it difficult to follow how format specifiers sync with their respective arguments.
+Each approach --- interspersion style and format-string style --- has its pros and cons. The format-string style observes the important principle of [separating logic from display](https://www.cs.usfca.edu/~parrt/papers/mvc.templates.pdf). This principle is well respected in a variety of programming paradigms, such as Model-View-Controller, web development, and UX design. Localization and internationalization applications and libraries can store all display artifacts in complete separation from program logic and swap them as needed. In a perfect separation model, there is no access to computation in the formatting strings at all, even as much as a simple addition or (in the case of `printf` format strings) even the names of the variables being printed. The disadvantage of the format-string style is that the expressions to be formatted appear lexically *after* the (possibly long) format string, which makes it difficult to follow how format specifiers sync with their respective arguments.
 
 The interspersion style is simple, intuitive, and requires learning no convention. However, creating complex outputs becomes cumbersome due to the syntactic heaviness of alternating string literals and other arguments in comma-separated lists. Also, customized formatting (such as rendering an integral in hexadecimal instead of decimal) is not immediate.
 
@@ -185,6 +185,7 @@ An `i`-string or an `f`-string may occur only in one of the following contexts:
 
 - in the argument list of a function or constructor call;
 - in the argument list of a `mixin`;
+- in the argument list of a `pragma(msg)` directive;
 - in the argument list of a template instantiation.
 
 In any other context, `i`-string or an `f`-string are ill-formed.
@@ -374,6 +375,26 @@ mixin(i"int $x = $y;");
 auto z = mixin(i"$x + 5");
 // Lowering --->
 // auto z = mixin(x, " + 5");
+```
+
+#### Use in `pragma(msg)` directives
+
+`i`-strings (but not `f`-strings) are allowed in `pragma(msg)` directives:
+
+```d
+enum x = 42;
+pragma(msg, i"x = $x.");
+// Lowering --->
+// pragma(msg, "x = ", x, ".");
+```
+
+Note that `pragma(msg)` is already variadic. Currently `assert` and `static assert` are not variadic, so they need to be helped with `text` or `format`:
+
+```d
+void fun(int x)(int y) {
+    static assert(x < 42, text(i"x is $x, should be less than 42"));
+    assert(y > 42, format(f"y is $y, should be greater than 42"));
+}
 ```
 
 #### Use in the argument list of template instantiations

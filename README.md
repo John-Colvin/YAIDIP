@@ -21,7 +21,7 @@ Textual formatting is often achieved either by APIs relying on formatting string
 
 ## Rationale
 
-A frequent pattern in programming is to create strings (for the purpose of printing to the console, writing to files, etc) by mixing predefined string fragments with data contained in variables. We identify two distinct approaches to formatting data: *format-string* style and *interspersion* style.
+A frequent pattern in programming is to create strings (for the purpose of printing to the console, writing to files, etc) by mixing predefined string fragments with data contained in variables. We identify two distinct approaches to formatting data: *interspersion* style and *format-string* style.
 
 The most straightforward approach to implement that pattern is to intersperse expressions with string fragments in calls to variadic functions:
 
@@ -33,7 +33,7 @@ void f1(string name) {
 }
 ```
 
-A more flexible approach, embodied by the classic `printf` family of C functions and carried over to D standard library functions such as `std.format.format` and `std.stdio.writefln`, is to use *format strings* that provide the string fragments intermixed with conventionally defined *formatting specifiers*. Specialized functions take such format strings followed by the arguments to be formatted and replace each formatting directive with suitably formatted data:
+A more flexible approach, embodied by the classic `printf` family of C functions and carried over to D standard library functions such as `std.format.format` and `std.stdio.writefln`, is to use *format strings* that contain conventionally defined *formatting specifiers*. Specialized functions take such format strings followed by the arguments to be formatted and replace each formatting directive with suitably formatted data:
 
 ```d
 void f2(string name) {
@@ -61,9 +61,9 @@ We will demonstrate how both the format-string style and the interspersion style
 
 - *code generation:* when generating code, the tight integration between the string literal fragments and the expressions to be inserted is essential to the process;
 - *scripting:* shell scripts use string interpolation very frequently, to the extent that the mechanics of quoting and interpolation is an essential focus of all shell scripting languages;
-- *casual printing, tracing, logging, and debugging:* sometimes, such tasks have more focus on the expressions to be printed, than on formatting paraphernalia.
+- *casual printing, tracing, logging, and debugging:* often, such tasks have more focus on the expressions to be printed, than on separating formatting paraphernalia from the data to be formatted.
 
-Such needs are served poorly by either the interspersion approach and the format-string approach. Consider an example of code generation adapted from the implementation of `std.bitmanip.bitfields`:
+The following examples show that such needs are served poorly by either the interspersion approach and the format-string approach. Consider an example of code generation adapted from the implementation of `std.bitmanip.bitfields`:
 
 ```d
 enum result = text(
@@ -91,7 +91,7 @@ enum result = format(
 );
 ```
 
-This form has less syntactic noise and appears as a format string separated from the expressions involved, for which reason we afforded to reformat it in a shape consistent with the generated code. However, the separation of format from data is clearly an impediment here requiring the reader to mentally track and pair the format specifiers `%s` with the arguments trailing the formatting string. Using positional arguments brings a marginal improvement to the code:
+This form has less syntactic noise and appears as a format string separated from the expressions involved, for which reason we afforded to reformat it in a shape consistent with the generated code. However, the separation of format from data is an impediment here requiring the reader to mentally track and pair the format specifiers `%s` with the arguments trailing the formatting string. The repetition of arguments after the formatting string is also problematic. Using positional arguments brings a marginal improvement to the code because the arguments must be passed only once and referred by their position:
 
 ```d
 enum result = format(
@@ -106,7 +106,7 @@ enum result = format(
 );
 ```
 
-Here, the reader only needs to track the correct use of numbers in the format specifiers and match it with the order in the trailing arguments. Correctness of the generated code is still difficult to assess on the generated code, for example the reader must mentally map tedious sequences such as `%3$s` to meaningful names such as `maskAllElse` throughout the code snippet.
+Here, the reader only needs to track the correct use of numbers in the format specifiers and match it with the order in the trailing arguments. Correctness of the generated code is still difficult to assess, for example the reader must mentally map tedious sequences such as `%3$s` to meaningful names such as `maskAllElse` throughout the code snippet.
 
 By comparison, using the interpolation syntax proposed in this DIP would make the code much easier to follow:
 
@@ -133,13 +133,11 @@ executeShell("wget " ~ url ~ " -O" ~ file ~ ".frag && mv " ~ file ~ ".frag " ~ f
 The version using format specifiers is marginally more readable:
 
 ```d
-// Classic
-executeShell("wget %s -O%s.frag && mv %s.frag %s", url, file, file, file);
-// Positional
-executeShell("wget %1$s -O%2$s.frag && mv %2$s.frag %2$s", url, file);
+executeShell("wget %s -O%s.frag && mv %s.frag %s", url, file, file, file);  // classic
+executeShell("wget %1$s -O%2$s.frag && mv %2$s.frag %2$s", url, file);      // positional
 ```
 
-The interpolated form is, again, by far the easiest to follow:
+The interpolated form is, again, the easiest to follow:
 
 ```d
 executeShell(i"wget $url -O$file.frag && mv $file.frag $file");
@@ -150,7 +148,7 @@ Last but not least, there are numerous cases in which casual console output can 
 ```d
 writeln("Hello, ", name, ". You are ", age, " years old.");  // interspersion
 writefln("Hello, %s. You are %s years old.", name, age);     // format string
-writeln(i"Hello, $name. You are $age years old.");         // interpolation
+writeln(i"Hello, $name. You are $age years old.");           // interpolation
 ```
 
 ### Why Yet Another String Interpolation Proposal?
@@ -184,11 +182,12 @@ An *interpolated string* is a regular D string prefixed with the letter `i`, as 
 An `i`-string or an `f`-string may occur only in one of the following contexts:
 
 - in the argument list of a function or constructor call;
-- in the argument list of a `mixin`;
-- in the argument list of a `pragma(msg)` directive;
+- in the argument list of a `mixin` (`i`-strings only);
+- in the argument list of a `pragma(msg)` directive (`i`-strings only);
+- in the argument list (starting with the second argument) of an `assert` or `static assert` invocation, contingent to fixing [Issue 17378](https://issues.dlang.org/show_bug.cgi?id=17378) (`i`-strings only); and
 - in the argument list of a template instantiation.
 
-In any other context, `i`-string or an `f`-string are ill-formed.
+In any other context, `i`-string or an `f`-string are illegal.
 
 For an example of `i`-strings, the function call expression:
 
@@ -225,14 +224,19 @@ InterpolatedFormattingString:
    f" DoubleQuotedCharacters "
 ```
 
-The `InterpolatedString` and `InterpolatedFormattingString` appear in the parser grammar as an `InterpolatedExpression`, which is under `PrimaryExpression`.
+The `InterpolatedString` and `InterpolatedFormattingString` appear in the parser grammar as an `InterpolatedList`, which is under `ArgumentList`.
 
 ```
-InterpolatedExpression:
-   InterpolatedString
-   InterpolatedString StringLiterals
-   InterpolatedFormattingString
-   InterpolatedFormattingString StringLiterals
+ArgumentList:
+    AssignExpression
+    AssignExpression ,
+    AssignExpression , ArgumentList
+    InterpolatedString
+    InterpolatedString ,
+    InterpolatedString , ArgumentList
+    InterpolatedFormattingString
+    InterpolatedFormattingString ,
+    InterpolatedFormattingString , ArgumentList
 ```
 
 Inside an interpolated string, the character `$` is of particular interest because the interpolated string will use it as an escape. To render `$` verbatim inside an interpolated string, the sequence `$$` shall be used. The contents of the `InterpolatedExpression` must conform to the following grammar, which is identical for `i`-strings and `f`-strings:
@@ -247,16 +251,16 @@ Element:
     '$$'
     '$' Identifier
     '$(' Type ')'
-    '$(' Expression ')'
+    '$(' AssignExpression ')'
 ```
 
-In the grammar above `Type` is the nonterminal for types, and `Expression` is the nonterminal for general D expressions.
+In the grammar above `Type` is the nonterminal for types, and `AssignExpression` is the nonterminal for general D assignment expressions. For details refer to the current grammar at https://dlang.org/spec/grammar.html.
 
-The `InterpolatedExpression` is lowered to a comma-separated list that consists of the string fragments interspersed with the expressions escaped by `$`. The `InterpolatedFormattingExpression` is lowered to the string literal fragments stitched together, followed by all escaped fragments, in lexical order.
+The `InterpolatedString` is lowered to a comma-separated list that consists of the string fragments interspersed with the expressions escaped by `$`. The `InterpolatedFormattingString` is lowered to the string literal fragments stitched together, followed by all escaped fragments, in lexical order.
 
 An `f`-string expansion produces a literal string in the first position even if that would be empty: `fun(f"$x")` lowers to `fun("", x)`, not `fun(x)`. In contrast, `i`-string expansion never produces empty string literals: `fun(i"$x")`expands to `fun(x)` and `fun(i"$x$y")`expands to `fun(x, y)`.
 
-Any lexical errors (such as a `$` followed by a space, or unbalanced `(` and `)`) will be reported during parsing. Semantic checking will ensure that interpolated strings occur only in the contexts specified above. Then, other semantic errors will be reported during the typechecking of the lowered code.
+Any lexical errors (such as a `$` followed by a space, or unbalanced `(` and `)`) will be reported during parsing. Then, other semantic errors will be reported during the typechecking of the lowered code.
 
 This concludes the syntax and semantics of the proposed feature.
 
@@ -446,7 +450,7 @@ alias Q = AliasSeq!(i"Let's interpolate $x!");  // OK, use as type
 auto q = AliasSeq!(i"Let's interpolate $x!");   // OK, store as AliasSeq
 ```
 
-As mentioned, functions or templates are not aware whether they received an interpolated string or a manually written list of arguments. This confers consistency, simplicity, and uniformity to the approach.
+As mentioned, functions or templates are not aware whether they received an interpolated string or a manually written list of arguments. This confers consistency, simplicity, predictability, and uniformity to the approach.
 
 It is not possible for an `f`-string to pass the string literal as a template argument and the interpolated expressions as run-time arguments:
 
@@ -471,7 +475,7 @@ void fun(int x) {
 }
 ```
 
-We consider that adding special mechanisms to adapt `f`-strings to a variety of formatting conventions is disproportionately complex and adds its own liabilities.
+We consider that adding special mechanisms to adapt `f`-strings to a variety of formatting conventions is disproportionately complex and adds its own liabilities. To mitigate this issue, at least for functions such as `std.stdio.format` and `std.stdio.writeln` the compiler can extent the curreny verification of format specifiers to `f`-strings as well.
 
 ## Breaking Changes and Deprecations
 

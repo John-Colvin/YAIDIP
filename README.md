@@ -4,7 +4,7 @@
 |-----------------|-------------------------------------------------------------------|
 | DIP:            | xxxx                                                              |
 | Review Count:   | 0                                                                 |
-| Author:         | Andrei Alexandrescu<br>John Colvin jcolvin@symmetryinvestments.com|
+| Author:         | Andrei Alexandrescu<br>John Colvin john.loughran.colvin@gmail.com | 
 | Implementation: |                                                                   |
 | Status:         |                                                                   |
 

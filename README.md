@@ -475,7 +475,7 @@ void fun(int x) {
 }
 ```
 
-We consider that adding special mechanisms to adapt `f`-strings to a variety of formatting conventions is disproportionately complex and adds its own liabilities. To mitigate this issue, at least for functions such as `std.stdio.format` and `std.stdio.writeln` the compiler can extent the curreny verification of format specifiers to `f`-strings as well.
+We consider that adding special mechanisms to adapt `f`-strings to a variety of formatting conventions is disproportionately complex and adds its own liabilities. To mitigate this issue, at least for functions such as `std.stdio.format` and `std.stdio.writeln` the compiler can extend the current verification of format specifiers to `f`-strings as well.
 
 ## Breaking Changes and Deprecations
 

@@ -53,9 +53,9 @@ void f2(string name) {
 }
 ```
 
-Each approach --- interspersion style and format-string style --- has its pros and cons. The format-string style observes the important principle of [separating logic from display](https://www.cs.usfca.edu/~parrt/papers/mvc.templates.pdf). This principle is well respected in a variety of programming paradigms, such as Model-View-Controller, web development, and UX design. Localization and internationalization applications and libraries can store all display artifacts in complete separation from program logic and swap them as needed. In a perfect separation model, there is no access to computation in the formatting strings at all, even as much as a simple addition or (in the case of `printf` format strings) even the names of the variables being printed. The disadvantage of the format-string style is that the expressions to be formatted appear lexically *separate from* the (possibly long) format string, which makes it difficult to follow which format specifiers correspond to their respective arguments.
+Each approach --- interspersion style and format-string style --- has its pros and cons. The format-string style observes the important principle of [separating logic from display](https://www.cs.usfca.edu/~parrt/papers/mvc.templates.pdf). This principle is well respected in a variety of programming paradigms and domains, such as Model-View-Controller, UX design, and web development. Localization and internationalization applications and libraries can store all display artifacts in complete separation from program logic and swap them as needed. In a perfect separation model, there is no access to computation in the formatting strings at all, even as much as a simple addition or (in the case of `printf` format strings) even the names of the variables being printed. The disadvantage of the format-string style is that the expressions to be formatted appear lexically *separate from* the (possibly long) format string, which makes it difficult to follow which format specifiers correspond to their respective arguments.
 
-The interspersion style is simple, intuitive, and requires learning no convention. However, creating complex outputs becomes cumbersome due to the syntactic heaviness of alternating string literals and other arguments in comma-separated lists. Also, customized formatting (such as rendering an integral in hexadecimal instead of decimal) is not immediate.
+The interspersion style is simple, intuitive, and requires learning no convention. However, creating complex outputs becomes cumbersome due to the syntactic heaviness of alternating string literals and other arguments in comma-separated lists. Also, customized formatting (such as rendering an integral in hexadecimal instead of decimal) is not supported.
 
 We will demonstrate how both the format-string style and the interspersion style fall short of expectations on three categories of everyday tasks:
 
@@ -239,7 +239,7 @@ ArgumentList:
     InterpolatedFormattingString , ArgumentList
 ```
 
-Inside an interpolated string, the character `$` is of particular interest because the interpolated string will use it as an escape. To render `$` verbatim inside an interpolated string, the sequence `$$` shall be used. The contents of the `InterpolatedExpression` must conform to the following grammar, which is identical for `i`-strings and `f`-strings:
+Inside an interpolated string, the character `$` is of particular interest because the interpolated string will use it as an escape. If `$` is not followed by an open paren or an identifier, its meaning is unchanged. If `$` is followed by an identifier (which starts with a `_` or alphabetic character) or open parenthesis, the `$` acts as an escape character introducing an interpolated identifier or expression. To render `$` verbatim when followed by an identifier or an open paranthesis, the sequence `$$` shall be used. The contents of the `InterpolatedExpression` must conform to the following grammar, which is identical for `i`-strings and `f`-strings:
 
 ```
 Elements:
@@ -249,6 +249,7 @@ Elements:
 Element:
     Character excluding '$'
     '$$'
+    '$' Character other than '$', '_', 'a'-'z', or 'A'-'Z'
     '$' Identifier
     '$(' Type ')'
     '$(' AssignExpression ')'
@@ -281,7 +282,7 @@ enum result = text(
 );
 ```
 
-In contrast, occurrences of `$` in D code are rare --- indeed more likely to be present in generated code that uses interpolation itself. This makes `$` a disproportionately strong candidate compared to other choices.
+In contrast, occurrences of `$` followed by an open parenthesis or an identifier in D code are rare --- indeed more likely to be present in generated code that uses interpolation itself. This makes `$` a disproportionately strong candidate compared to other choices.
 
 The second question --- why not use `${` and `}` instead of `$(` and `)` --- has a simple answer: the elements to group inside the escape sequences are expressions, not statements. There already exists a syntax for grouping expressions, and that's surrounding them with `(` and `)`, which closes the case by invoking the [principle of least astonishment](https://en.wikipedia.org/wiki/Principle_of_least_astonishment).
 

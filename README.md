@@ -10,7 +10,7 @@
 
 ## Abstract
 
-Textual formatting is often achieved either by APIs relying on formatting strings followed by arguments to be formatted (in the style of `printf`, `std.format.format`, and `std.stdio.writefln`), or by interspersing string fragments with arguments (in the style of `std.conv.text` and `std.stdio.writeln`). String interpolation enables embedding the arguments in the string itself. We propose an extremely simple yet powerful approach of lowering interpolated strings into comma-separated lists that works with both *format-string* style and *interspersion* style with no change to any library function. We demonstrate how this approach achieves all major objectives of an interpolated strings feature with a minimal footprint on the language definition and support library.
+Textual formatting is often achieved either by APIs relying on formatting strings followed by arguments to be formatted (in the style of `printf`, `std.format.format`, and `std.stdio.writefln`), or by interspersing string fragments with arguments (in the style of `std.conv.text` and `std.stdio.writeln`). String interpolation enables embedding the arguments in the string itself. We propose an extremely simple yet powerful approach of lowering interpolated strings into comma-separated lists that works with both *format-string* style and *interspersion* style with no change to any existing library function. We demonstrate how this approach achieves all major objectives of an interpolated strings feature with a minimal footprint on the language definition and support library.
 
 ## Contents
 * [Rationale](#rationale)

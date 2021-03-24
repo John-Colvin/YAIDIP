@@ -335,7 +335,7 @@ void main(string[] args) {
 
 #### Manipulator-style formatting
 
-[C++'s iostreams](http://www.cplusplus.com/reference/iolibrary/) introduced the notion of [*stream manipulators*](https://en.cppreference.com/w/cpp/io/manip) --- special functions interspersed with the data to print, which direct the way data is to be formatted. For example, the C++ `std::dec` and `std::hex` manipulators instruct the formatting engine to format the following integral in decimal and hexadecimal, respectively:
+[C++'s iostreams](http://www.cplusplus.com/reference/iolibrary/) introduced the notion of [*stream manipulators*](https://en.cppreference.com/w/cpp/io/manip) --- special functions interspersed with the data to print, which direct the way data is to be formatted. For example, the C++ `std::dec` and `std::hex` manipulators instruct the formatting engine to format the following integer in decimal and hexadecimal, respectively:
 
 ```C++
 // C++ code

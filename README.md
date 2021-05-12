@@ -10,7 +10,7 @@
 
 ## Abstract
 
-Textual formatting is often achieved either by APIs relying on formatting strings followed by arguments to be formatted (in the style of `printf`, `std.format.format`, and `std.stdio.writefln`), or by interspersing string fragments with arguments (in the style of `std.conv.text` and `std.stdio.writeln`). String interpolation enables embedding the arguments in the string itself. We propose an extremely simple yet powerful approach of lowering interpolated strings into comma-separated lists that works with both *format-string* style and *interspersion* style with no change to any existing library function. We demonstrate how this approach achieves all major objectives of an interpolated strings feature with a minimal footprint on the language definition and support library.
+Textual formatting is often achieved by APIs relying either on format specification strings followed by arguments to be formatted (in the style of `printf`, `std.format.format`, and `std.stdio.writefln`), or on interspersing arguments of string and non-string types (in the style of `std.conv.text` and `std.stdio.writeln`). String interpolation enables a style of formatting that embeds arguments within a literal string. We propose an extremely simple yet powerful approach of lowering interpolated strings into comma-separated lists that works with both *format-string* style and *interspersion* style with no or minimal changes to functions to take advantage of such interpolated strings. We demonstrate how this approach achieves all major objectives of an interpolated strings feature with a minimal footprint on the language definition and support library.
 
 ## Contents
 * [Rationale](#rationale)
@@ -21,9 +21,9 @@ Textual formatting is often achieved either by APIs relying on formatting string
 
 ## Rationale
 
-A frequent pattern in programming is to create strings (for the purpose of printing to the console, writing to files, etc) by mixing predefined string fragments with data contained in variables. We identify two distinct approaches to formatting data: *interspersion* style and *format-string* style.
+A frequent pattern in programming is to create strings (for the purpose of printing to the console, writing to files, etc) by mixing predefined string fragments (literal strings) with data contained in variables. We identify two distinct approaches to formatting data: *interspersion* style and *format-string* style.
 
-The most straightforward approach to implement that pattern is to intersperse expressions with string fragments in calls to variadic functions:
+The most straightforward approach is to intersperse expressions with string literals in calls to variadic functions:
 
 ```d
 void f1(string name) {
@@ -33,7 +33,7 @@ void f1(string name) {
 }
 ```
 
-A more flexible approach, embodied by the classic `printf` family of C functions and carried over to D standard library functions such as `std.format.format` and `std.stdio.writefln`, is to use *format strings* that contain conventionally defined *formatting specifiers*. Specialized functions take such format strings followed by the arguments to be formatted and replace each formatting directive with suitably formatted data:
+A more flexible approach, embodied by the classic `printf` family of C functions and carried over to D standard library functions such as `std.format.format` and `std.stdio.writefln`, is to use *format strings* that contain conventionally defined *format specifiers*. Specialized functions take such format strings followed by the arguments to be formatted and replace each format specifier with suitably formatted data:
 
 ```d
 void f2(string name) {
@@ -47,8 +47,8 @@ Other examples of the format-string style are string templates for formatting HT
 
 ```d
 void f2(string name) {
-    htmlOutput("Looking for #{}...", name);
-    auto rows = sql("SELECT * FROM t WHERE name = ? AND active = true", name);
+    htmlOutput("Looking for #{}...", name);                  // specifier is #{}
+    auto rows = sql("SELECT * FROM t WHERE name = ?", name); // specifier is a question mark
     ...
 }
 ```
@@ -57,7 +57,7 @@ Each approach --- interspersion style and format-string style --- has its pros a
 
 The interspersion style is simple, intuitive, and requires learning no convention. However, creating complex outputs becomes cumbersome due to the syntactic heaviness of alternating string literals and other arguments in comma-separated lists. Also, customized formatting (such as rendering an integral in hexadecimal instead of decimal) is not supported.
 
-We will demonstrate how both the format-string style and the interspersion style fall short of expectations on three categories of everyday tasks:
+Below we provide evidence to the difficulties of both the format-string style and the interspersion style for three categories of typical tasks:
 
 - *code generation:* when generating code, the tight integration between the string literal fragments and the expressions to be inserted is essential to the process;
 - *scripting:* shell scripts use string interpolation very frequently, to the extent that the mechanics of quoting and interpolation is an essential focus of all shell scripting languages;
@@ -75,7 +75,7 @@ enum result = text(
 );
 ```
 
-(The [original code](https://github.com/dlang/phobos/blob/v2.095.1/std/bitmanip.d#L115) uses string concatenation instead of a call to `text`. We use the latter to simplify the example.) Here, the interspersion mechanics (closing quote, comma, expression, comma, opening quote) distract from following the correctness of the generated code. An approach based on format specifiers would look as follows:
+(The [original code](https://github.com/dlang/phobos/blob/v2.095.1/std/bitmanip.d#L115) uses string concatenation instead of a call to `text`. We use the latter to simplify the example.) Here, the interspersion mechanics (closing quote, comma, expression, comma, opening quote) distract the reader from following the correctness of the generated code. An approach based on format specifiers would look as follows:
 
 ```d
 enum result = format(
@@ -122,7 +122,7 @@ enum result = text(
 );
 ```
 
-The latter form has dramatically less syntactic noise and appears as a single string with expressions inside escaped by `$`. Correctness of the generated code is much easier to assess in the second form as well.
+The latter form has dramatically less syntactic noise and appears as a single string with expressions inside escaped by `$`. Correctness of the generated code is much easier to assess as well.
 
 Let us also look at a shell command example. Assume `url` is an URL and `file` is an filename, both preprocessed as escaped shell strings. To download `url` into `file` without risking corrupt files in case of incomplete downloads, the code below first downloads into a temporary file with the extension `.frag` and then atomically renames it to the correct name:
 
@@ -157,9 +157,9 @@ This DIP derives from, and owes much to, the previous work on string interpolati
 
 This DIP is close to the prior work yet different in key aspects as follows:
 
-- Like [Jonathan Marler's Interpolated Strings](http://github.com/dlang/dmd/pull/7988), this DIP expands the interpolated string into an argument list. However, unlike that proposal that automatically passes the expansion as an argument list for `std.typecons.tuple`, we expand into an argument list. We will show how doing so has significant flexibility and efficiency advantages.
-- Like [DIP 1027](https://github.com/dlang/DIPs/blob/master/DIPs/rejected/DIP1027.md), this DIP expands the interpolated string into a list. Unlike DIP 1027, which only supports the format-string style, this proposal supports both the interspersion and the format-string style. It also has a simpler syntax and semantics.
-- We heed important lessons from [DIP 1036](https://github.com/dlang/DIPs/blob/master/DIPs/DIP1036.md), mainly that while pursuing generality, complexity must be kept under control. In wake of it, we concluded that unification of the format-string style and interspersion approach with a single interpolation syntax is not the appropriate goal. Instead, we recognize the two goals as distinct and propose distinct constructs for them.
+- Like [Jonathan Marler's Interpolated Strings](http://github.com/dlang/dmd/pull/7988), this DIP expands the interpolated string into an argument list. However, unlike that proposal that automatically passes the expansion as an argument list for `std.typecons.tuple`, we expand into an argument list and leave the rest to user code. We will show how doing so has significant flexibility and efficiency advantages.
+- Like [DIP 1027](https://github.com/dlang/DIPs/blob/master/DIPs/rejected/DIP1027.md), this DIP expands the interpolated string into an argument list. Unlike DIP 1027, which only supports the format-string style, this proposal supports both the interspersion and the format-string style. It also has a simpler syntax and semantics.
+- We heed important lessons from [DIP 1036](https://github.com/dlang/DIPs/blob/master/DIPs/DIP1036.md), mainly that while pursuing generality, complexity must be kept under control.
 
 We will demonstrate how this DIP achieves all major goals of extant proposals with a radically simpler definition and implementation.
 
@@ -175,21 +175,21 @@ For many such examples, see [String Interpolation](https://en.wikipedia.org/wiki
 
 ## Description
 
-D strings have several syntactical form, among which a few that follow the pattern of a letter followed by the string proper. Such include `r"WYSIWYG strings"`, `q"[delimited strings]"`, and `q{token strings}`. Our proposal follows the same pattern by introducing `i"interpolated strings"` and `f"interpolated formatting strings"`.
+D strings have several syntactical form, among which a few that follow the pattern of a letter followed by the string proper. Such include `r"WYSIWYG strings"`, `q"[delimited strings]"`, and `q{token strings}`. Our proposal follows the same pattern by introducing `i"interpolated strings"`.
 
-An *interpolated string* is a regular D string prefixed with the letter `i`, as in `i"Hello"`. An *interpolated formatting string* is a regular D string prefixed with the letter `f`, as in `f"world"`. No whitespace is allowed between `i` or `f` and the opening quote. The first expands into the interspersed style, and the second expands into the format-string style. We refer to them as `i`-strings and `f`-strings, respectively.
+An *interpolated string* is a regular D string prefixed with the letter `i`, as in `i"Hello"`. No whitespace is allowed between `i` and the opening quote. We refer to these construct as `i`-strings.
 
-An `i`-string or an `f`-string may occur only in one of the following contexts:
+An `i`-string is allowed in source code only in one of the following contexts:
 
 - in the argument list of a function or constructor call;
-- in the argument list of a `mixin` (`i`-strings only);
-- in the argument list of a `pragma(msg)` directive (`i`-strings only);
-- in the argument list (starting with the second argument) of an `assert` or `static assert` invocation, contingent to fixing [Issue 17378](https://issues.dlang.org/show_bug.cgi?id=17378) (`i`-strings only); and
+- in the argument list of a `mixin`;
+- in the argument list of a `pragma(msg)` directive;
+- in the argument list (starting with the second argument) of an `assert` or `static assert` invocation, contingent to fixing [Issue 17378](https://issues.dlang.org/show_bug.cgi?id=17378); and
 - in the argument list of a template instantiation.
 
-In any other context, `i`-string or an `f`-string are illegal.
+In any other context, `i`-strings are illegal.
 
-For an example of `i`-strings, the function call expression:
+For an example of `i`-strings usage, the function call expression:
 
 ```d
 writeln(i"I ate $apples apples and $bananas bananas totalling $(apples + bananas) fruit.")
@@ -198,20 +198,10 @@ writeln(i"I ate $apples apples and $bananas bananas totalling $(apples + bananas
 is lowered into:
 
 ```d
-writeln("I ate ", apples, " apples and ", bananas, " bananas totalling ", apples + bananas, " fruit.")
+writeln(__header, "I ate ", apples, " apples and ", bananas, " bananas totalling ", apples + bananas, " fruit.")
 ```
 
-For an example of `f`-strings, the function call expression:
-
-```d
-writefln(f"I ate %s$apples apples and %s$bananas bananas totalling %s$(apples + bananas) fruit.")
-```
-
-is lowered into:
-
-```d
-writefln(f"I ate %s apples and %s bananas totalling %s fruit.", apples, bananas, apples + bananas)
-```
+The `__header` value, to be discussed later, is generated by the compiler and contains compile-time information about the interpolated string.
 
 The resulting lowered code is subjected to the usual typechecking and has the same semantics as if the lowered code were present in the source.
 
@@ -220,11 +210,9 @@ After introducing an intuition of how interpolated string work, let us formalize
 ```
 InterpolatedString:
    i" DoubleQuotedCharacters "
-InterpolatedFormattingString:
-   f" DoubleQuotedCharacters "
 ```
 
-The `InterpolatedString` and `InterpolatedFormattingString` appear in the parser grammar as an `InterpolatedList`, which is under `ArgumentList`.
+The `InterpolatedString` appears in the parser grammar as an `InterpolatedList`, which is under `ArgumentList`.
 
 ```
 ArgumentList:
@@ -234,12 +222,9 @@ ArgumentList:
     InterpolatedString
     InterpolatedString ,
     InterpolatedString , ArgumentList
-    InterpolatedFormattingString
-    InterpolatedFormattingString ,
-    InterpolatedFormattingString , ArgumentList
 ```
 
-Inside an interpolated string, the character `$` is of particular interest because the interpolated string will use it as an escape. If `$` is not followed by an open paren or an identifier, its meaning is unchanged. If `$` is followed by an identifier (which starts with a `_` or alphabetic character) or open parenthesis, the `$` acts as an escape character introducing an interpolated identifier or expression. To render `$` verbatim when followed by an identifier or an open paranthesis, the sequence `$$` shall be used. The contents of the `InterpolatedExpression` must conform to the following grammar, which is identical for `i`-strings and `f`-strings:
+Inside an interpolated string, the character `$` is of particular interest because the interpolated string will use it as an escape. If `$` is not followed by an open paren or an identifier, its meaning is unchanged. If `$` is followed by an identifier (which starts with a `_` or alphabetic character) or open parenthesis, the `$` acts as an escape character introducing an interpolated identifier or expression. To render `$` verbatim when followed by an identifier or an open paranthesis, the sequence `$$` shall be used. The contents of the `InterpolatedExpression` must conform to the following grammar:
 
 ```
 Elements:
@@ -257,13 +242,104 @@ Element:
 
 In the grammar above `Type` is the nonterminal for types, and `AssignExpression` is the nonterminal for general D assignment expressions. For details refer to the current grammar at https://dlang.org/spec/grammar.html.
 
-The `InterpolatedString` is lowered to a comma-separated list that consists of the string fragments interspersed with the expressions escaped by `$`. The `InterpolatedFormattingString` is lowered to the string literal fragments stitched together, followed by all escaped fragments, in lexical order.
+The `InterpolatedString` is lowered to a comma-separated list that consists of a header followed by the string fragments interspersed with the expressions escaped by `$`.
 
-An `f`-string expansion produces a literal string in the first position even if that would be empty: `fun(f"$x")` lowers to `fun("", x)`, not `fun(x)`. In contrast, `i`-string expansion never produces empty string literals: `fun(i"$x")`expands to `fun(x)` and `fun(i"$x$y")`expands to `fun(x, y)`.
+Any lexical errors (such as unbalanced `(` and `)`) will be reported during parsing. Then, semantic errors will be reported during the typechecking of the lowered code.
 
-Any lexical errors (such as a `$` followed by a space, or unbalanced `(` and `)`) will be reported during parsing. Then, other semantic errors will be reported during the typechecking of the lowered code.
+### Normalization of interspersion
+
+The lowering is normalized such that:
+
+(a) A `__header` object is always the first element in the resulting argument list;
+(b) The rest of the resulting argument list always starts with a string literal;
+(c) The argument list always ends with a string literal; and
+(d) The argument list always alternates between literal strings and expressions, i.e. there are never two consecutive literal strings or two consecutive expressions.
+
+To effect these rules, the lowering may introduce empty strings as follows.
+
+If an interpolated string starts with an escape sequence, an empty string is always introduced before it in the expansion. Example:
+
+```D
+writeln("$name, hi!");
+```
+
+is lowered to:
+
+```D
+writeln(__header, "", name, " hi!");
+```
+
+If an interpolated string ends with an escape sequence, an empty string is always introduced after it in the expansion. Example:
+
+```D
+writeln("Hello, world$exclamation");
+```
+
+is lowered to:
+
+```D
+writeln(__header, "Hello, world", exclamation);
+```
+
+Finally, if an `i`-string contains two consecutive expansions, the lowering will introduce an empty string literal in between. Example:
+
+```D
+writeln("Hello, $name$exclamation How are you?");
+```
+
+is lowered to:
+
+```D
+writeln(__header, "Hello", name, "", exclamation, " How are you?");
+```
+
+These rules can apply simultaneously on the same `i`-string. Example:
+
+```D
+writeln("$greeting, $name$exclamation");
+```
+
+is lowered to:
+
+```D
+writeln(__header, "", $greeting, ", ", name, "", exclamation, "");
+```
+
+The purpose of normalization, as can be seen in the given examples, is to always have the argument list in a fixed pattern: *header*, *string-literal*, *expression*, *string-literal*, *expression*, ...,  *string-literal*.
+
+## The Interpolation Header
+
+Every `i`-string lowering introduces a header rvalue object that so far we conventionally denoted as `__header` (the exact name is uniquely compiler-generated and hence inaccessible). The header is a stateless `struct` that contains exclusively compile-time information about the interpolation, generated from the following template:
+
+```D
+struct InterpolationHeader(_parts...) {
+    alias parts = _parts;
+    string toString() { return null; }
+}
+```
+
+The argument to the instantiation of `Header` is the interpolation string deconstructed into parts and normalized. Example:
+
+```D
+writeln("$greeting, $name$exclamation");
+```
+
+is lowered to:
+
+```D
+writeln(InterpolationHeader!("", "greeting", ", ", "name", "", "exclamation", "")(),
+    "", $greeting, ", ", name, "", exclamation, "");
+```
+
+Note how the header gives the callee complete access to the strings corresponding to the expressions passed in.
+
+Due to normalization, `parts` always has an odd number of elements. Strings at even indices in `parts` always originate in the literal fragments of the interpolated string. Strings at odd indices are always string representations of D expressions.
+
+The header object has a trivial `toString` method that expands to the `null` string. This method makes it possible to pass interpolated strings directly to functions such as `writeln` and `text` because these functions detect and use `toString` to convert unknown data types to strings. More sophisticated functions that do want to detect interpolated strings can detect the presence of `Header` objects by simple introspection.
 
 This concludes the syntax and semantics of the proposed feature.
+
+### Discussion: The Choice of Escape Grammar
 
 Why choose the `$` when many popular languages and libraries (Python, C++20, C#) use `{` and `}` as escape characters? Also, why use `$(` and `)` as opposed to `${` and `}`, as perhaps a bash user may be more familiar with?
 
@@ -282,15 +358,15 @@ enum result = text(
 );
 ```
 
-In contrast, occurrences of `$` followed by an open parenthesis or an identifier in D code are rare --- indeed more likely to be present in generated code that uses interpolation itself. This makes `$` a disproportionately strong candidate compared to other choices.
+In contrast, occurrences of `$` followed by an open parenthesis or an identifier in D code are rare --- indeed most likely to be present in generated code that uses interpolation itself. This makes `$` a disproportionately strong candidate compared to other choices.
 
 The second question --- why not use `${` and `}` instead of `$(` and `)` --- has a simple answer: the elements to group inside the escape sequences are expressions, not statements. There already exists a syntax for grouping expressions, and that's surrounding them with `(` and `)`, which closes the case by invoking the [principle of least astonishment](https://en.wikipedia.org/wiki/Principle_of_least_astonishment).
 
-### Use Cases
+## Use Cases
 
 Although the proposed feature is deceptively simple, its flexibility affords a multitude of use cases. They can be easily assessed with a current D compiler by typing in the lowered code.
 
-#### Passing arguments to functions
+### Passing arguments to functions
 
 The simplest use case of interpolated strings, and the most likely to be encountered in practice, is as argument to functions such as `writeln`, `text`, `writefln`, or `format`:
 
@@ -299,40 +375,52 @@ void main(string[] args) {
     import std.stdio;
     writeln(i"The program $(args[0]) received $(args.length - 1) arguments.");
     // Lowering: --->
-    // writeln("The program ", args[0], " received ", args.length - 1, " arguments.");
+    // writeln(InterpolationHeader!("The program ", "args[0]", " received ", "args.length - 1", " arguments.")(),
+    //     "The program ", args[0], " received ", args.length - 1, " arguments.");
 
-    writefln(f"The program %s$(args[0]) received %s$(args.length - 1) arguments.");
+    auto s = sqlExec(i"INSERT INTO runs VALUES ($(args[0]), $(args.length - 1))");
     // Lowering: --->
-    // writefln("The program %s received %s arguments.", args[0], args.length - 1);
-
-    auto s = sqlExec(f"INSERT INTO runs VALUES(?$(args[0]), ?$(args.length - 1))");
-    // Lowering: --->
-    // auto s = sqlExec("INSERT INTO runs VALUES(?, ?)", args[0], args.length - 1);
+    // auto s = sqlExec(InterpolationHeader!("INSERT INTO runs VALUES(", "args[0]", ", ", "args.length - 1", ")")(),
+    //    args[0], $(args.length - 1));
 }
 ```
 
-A function such as `std.stdio.writeln` or `std.stdio.writefln` above has no way to know whether it was called via an interpolated string or with arguments specified as in the corresponding lowering; interpolated strings are purely a call-side mechanism. We consider this a key characteristic of the proposed feature that drastically simplifies its definition and interoperation with existing code.
+A function such as `std.stdio.writeln` may choose to uniformly convert the header to string by means of calling its `toString` method, thus essentially working with interpolated strings without modification. The second possibility is that the function detects the header but "skips" it and ignores the information it provides, which is easy to accommodate on the function implementer's side. Finally, a function may choose to fully support `i`-strings with specialized semantics. We consider this flexibility a key characteristic of the proposed feature that drastically simplifies both its definition, unrestandability, and interoperation with new and existing code.
 
-For `f`-strings, the convention for format specifiers varies with the API --- for example, `printf` and `std.stdio.writefln` use the well-known `%`-prefixed specifiers, whereas SQL traditionally uses `?`. For that reason and to keep complexity to a minimum, `f`-strings do not try to be clever and provide their own convention and translation mechanism; instead, they just concatenate the string literal fragments together just like the user wrote them, and follows them with the interpolated expressions. An `f`-string does not create any text.
+A format-string-style function such as `writefln` does not work unchanged with interpolated strings because the lowering is unhelpful:
+
+```D
+writefln(i"Hello, %s$name %s$surname!");
+// Lowering: --->
+// writefln(InterpolationHeader!("Hello, %s", "name", " %s", "surname", "!")(),
+//     name, surname);
+```
+
+However, there is enough information in the interpolated string to allow `writefln` to work transparently with interpolated strings by detecting and processing during compilation the header information:
+
+```D
+// Possible semantics: format spec precedes argument
+writefln(i"Hello, %s$name %s$surname!");
+// Result:
+// "Hello, John Smith!"
+```
 
 #### Saving the result of interpolation as a tuple
 
-Although it may seem limiting to impose that interpolated strings expand in a function call, `tuple` offers an immediate and efficient mechanism for storing the result of interpolation. The following program produces the same output as the previous one:
+Although it may seem limiting to impose that interpolated strings expand to an argument list (most often in a call to a user-provided function call), `tuple` offers an immediate and efficient mechanism for storing the result of interpolation. The following program produces the same output as the previous one:
 
 ```d
 void main(string[] args) {
     import std.stdio;
     auto t1 = tuple(i"The program $(args[0]) received $(args.length - 1) arguments.");
     // Lowering: --->
-    // auto t1 = tuple("The program ", args[0], " received ", args.length - 1, " arguments.");
+    // auto t1 = tuple(InterpolationHeader!("The program ", "args[0]", " received ", "args.length - 1", " arguments.")(),
+    //    "The program ", args[0], " received ", args.length - 1, " arguments.");
     writeln(t1.expand);
-
-    auto t2 = tuple(f"The program %s$(args[0]) received %s$(args.length - 1) arguments.");
-    // Lowering: --->
-    // auto t2 = tuple("The program %s received %s arguments.", args[0], args.length - 1);
-    writefln(t2.expand);
 }
 ```
+
+With the existing implementation, `tuple` will save the interpolation header as its first data member. Of course, it is easy to adjust its implementation to drop it if deemed necessary.
 
 #### Manipulator-style formatting
 
@@ -346,52 +434,59 @@ void fun(int x) {
 }
 ```
 
-The approach is obviously extensible by simply adding new manipulators. Unfortunately, C++ stream manipulators have developed a poor reputation because they are very heavy syntactically --- interspersion is done with the visually prominent `<<` and the user must choose between polluting their namespace and using the `std::` prefix for scope resolution with each manipulator. (These issues and other unrelated ones motivated the introduction of the `<format>` facility in C++20.)
+The approach is obviously extensible by simply adding new manipulators. Unfortunately, C++ stream manipulators have developed a poor reputation because they are syntactically heavy --- interspersion is done with the visually prominent `<<` and the user must choose between polluting their namespace and using the `std::` prefix for scope resolution with each manipulator. (These issues and other unrelated ones motivated the introduction of the `<format>` facility in C++20.)
 
 Using interpolation, a manipulators-based approach can be used elegantly and implemented with minimal effort. Consider for example using stream manipulators such as `dec` and `hex` for `writeln` by using an `i`-string:
 
-```d
+```D
 void fun(int x) {
     writeln(i"$dec$x in hexadecimal is 0x$hex$x.");
     // Lowering: --->
-    // writeln(dec, x, " in hexadecimal is 0x", hex, x, ".");
+    // writeln(InterpolationHeader!("", "dec", "", "x", " in hexadecimal is 0x", "hex", "", "x", ".")(),
+    //     "", dec, "", x, " in hexadecimal is 0x", hex, "", x, ".");
 }
 ```
 
-There is no need for defining, implementing, and memorizing a mini-language of encoded format specifiers --- all formatting can be done with D language expressions. Continuing the example, the library can just as easily define parameterized formatting for floating-point numbers, such as width, precision, and scientific notation:
+There is no need for defining, implementing, and memorizing a *sui generis* mini-language of encoded format specifiers --- all formatting can be done with D language expressions. Continuing the example, the library can just as easily define parameterized formatting for floating-point numbers, such as width, precision, and scientific notation:
 
 ```d
 void fun(double x) {
-    writeln(i"$x can be written as $scientific$x and its exact value is $(fixed(20, 10))$x");
+    writeln(i"$x can be written as $scientific$x or $(fixed(20, 10))$x.");
     // Lowering: --->
-    // writeln(x, " can be written as ", scientific, x, " and its exact value is ", fixed(20, 10), x);
+    // writeln(InterpolationHeader!("", "x", " can be written as ", scientific, "", x, " or ", fixed(20, 10), "", x, ".")(),
+    //     x, " can be written as ", scientific, "", x, " or ", fixed(20, 10), "", x, ".");
 }
 ```
 
 #### Use in `mixin` declarations and expressions
 
-`i`-strings (but not `f`-strings) are allowed in `mixin` declarations and expressions:
+`i`-strings are allowed in `mixin` declarations and expressions.
 
 ```d
 immutable x = "asd", y = 42;
 mixin(i"int $x = $y;");
 // Lowering --->
-// mixin("int ", x, " = ", y, ";");
+// mixin(InterpolationHeader!("int ", "x", " = ", "y", ";")(),
+//     "int ", x, " = ", y, ";");
 auto z = mixin(i"$x + 5");
 // Lowering --->
 // auto z = mixin(x, " + 5");
 ```
 
+The interpolation header is ignored by `mixin`s.
+
 #### Use in `pragma(msg)` directives
 
-`i`-strings (but not `f`-strings) are allowed in `pragma(msg)` directives:
+`i`-strings are allowed in `pragma(msg)` directives:
 
 ```d
 enum x = 42;
 pragma(msg, i"x = $x.");
 // Lowering --->
-// pragma(msg, "x = ", x, ".");
+// pragma(msg, InterpolationHeader!("x = ", "x", ".")(), "x = ", x, ".");
 ```
+
+`i`-strings are allowed in `pragma(msg)` directives.
 
 Note that `pragma(msg)` is already variadic. Currently `assert` and `static assert` are not variadic, so they need to be helped with `text` or `format`:
 
@@ -417,7 +512,7 @@ alias Calculator = Grammar!(
     Factor := $identifier | '(' Expression ')' "
 );
 // Lowering: --->
-// alias Calculator = Grammar!(
+// alias Calculator = Grammar!(InterpolationHeader!(...)(),
 //     "Expression := Term + Term
 //     Term := Factor * Factor
 //     Factor := ", identifier, " | '(' Expression ')' "
@@ -451,36 +546,9 @@ alias Q = AliasSeq!(i"Let's interpolate $x!");  // OK, use as type
 auto q = AliasSeq!(i"Let's interpolate $x!");   // OK, store as AliasSeq
 ```
 
-As mentioned, functions or templates are not aware whether they received an interpolated string or a manually written list of arguments. This confers consistency, simplicity, predictability, and uniformity to the approach.
-
-It is not possible for an `f`-string to pass the string literal as a template argument and the interpolated expressions as run-time arguments:
-
-```d
-void main(string[] args) {
-    import std.stdio;
-    // No equivalent using interpolation
-    writefln!"The program %s received %s arguments."(args[0], args.length - 1);
-}
-```
-
-`f`-strings do not provide special rules to match format specifiers (such as `%s` in `std.stdio.writefln` or `?` in SQL prepared statements) against arguments:
-
-```d
-void fun(int x) {
-    writefln(f"Adding %s$x...");  // prints "Adding 42 ..."
-    writefln(f"Adding $x...");    // prints "Adding ..."
-    sqlExec(f"INSERT INTO t VALUES(?$x)");  // OK
-    sqlExec(f"INSERT INTO t VALUES($x?)");  // OK, equivalent
-    sqlExec(f"INSERT INTO t$x VALUES(?)");  // OK, equivalent but perverse
-    sqlExec(f"INSERT INTO t VALUES($x)");   // Runtime error, missing '?' binding
-}
-```
-
-We consider that adding special mechanisms to adapt `f`-strings to a variety of formatting conventions is disproportionately complex and adds its own liabilities. To mitigate this issue, at least for functions such as `std.stdio.format` and `std.stdio.writeln` the compiler can extend the current verification of format specifiers to `f`-strings as well.
-
 ## Breaking Changes and Deprecations
 
-Because `InterpolatedString` and `InterpolatedFormatString` are new tokens, no existing code is broken.
+Because `InterpolatedString` is a new token, no existing code is broken.
 
 ## Copyright & License
 

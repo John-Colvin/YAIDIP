@@ -53,15 +53,15 @@ void f2(string name) {
 }
 ```
 
-Each approach --- interspersion style and format-string style --- has its pros and cons. The format-string style observes the important principle of [separating logic from display](https://www.cs.usfca.edu/~parrt/papers/mvc.templates.pdf). This principle is well respected in a variety of programming paradigms and domains, such as Model-View-Controller, UX design, and web development. Localization and internationalization applications and libraries can store all display artifacts in complete separation from program logic and swap them as needed. In a perfect separation model, there is no access to computation in the formatting strings at all, even as much as a simple addition or (in the case of `printf` format strings) even the names of the variables being printed. The disadvantage of the format-string style is that the expressions to be formatted appear lexically *separate from* the (possibly long) format string, which makes it difficult to follow which format specifiers correspond to their respective arguments.
+Each approach --- interspersion style and format-string style --- has its pros and cons. The format-string style observes the important principle of [separating logic from display](https://www.cs.usfca.edu/~parrt/papers/mvc.templates.pdf). This principle is well-respected in a variety of programming paradigms and domains, such as Model-View-Controller, UX design, and web development. Localization and internationalization applications and libraries can store all display artifacts in complete separation from program logic and swap them as needed. In a perfect separation model, there is no access to computation in the formatting strings at all, even as much as a simple addition or (in the case of `printf` format strings) even the names of the variables being printed. The disadvantage of the format-string style is that the expressions to be formatted appear lexically *separate from* the (possibly long) format string, which makes it difficult to follow which format specifiers correspond to their respective arguments.
 
 The interspersion style is simple, intuitive, and requires learning no convention. However, creating complex outputs becomes cumbersome due to the syntactic heaviness of alternating string literals and other arguments in comma-separated lists. Also, customized formatting (such as rendering an integral in hexadecimal instead of decimal) is not supported.
 
 Below we provide evidence to the difficulties of both the format-string style and the interspersion style for three categories of typical tasks:
 
 - *code generation:* when generating code, the tight integration between the string literal fragments and the expressions to be inserted is essential to the process;
-- *scripting:* shell scripts use string interpolation very frequently, to the extent that the mechanics of quoting and interpolation is an essential focus of all shell scripting languages;
-- *casual printing, tracing, logging, and debugging:* often, such tasks have more focus on the expressions to be printed, than on separating formatting paraphernalia from the data to be formatted.
+- *scripting:* shell scripts frequently use string interpolation, to the extent that the mechanics of quoting and interpolation is an essential focus of all shell scripting languages;
+- *casual printing, tracing, logging, and debugging:* often, such tasks have more focus on the expressions to be printed than on separating formatting paraphernalia from the data to be formatted.
 
 The following examples show that such needs are served poorly by either the interspersion approach and the format-string approach. Consider an example of code generation adapted from the implementation of `std.bitmanip.bitfields`:
 
@@ -108,7 +108,7 @@ enum result = format(
 
 Here, the reader only needs to track the correct use of numbers in the format specifiers and match it with the order in the trailing arguments. Correctness of the generated code is still difficult to assess, for example the reader must mentally map tedious sequences such as `%3$s` to meaningful names such as `maskAllElse` throughout the code snippet.
 
-By comparison, using the interpolation syntax proposed in this DIP would make the code much easier to follow:
+By comparison, using the interpolation syntax proposed in this DIP would make the code easier to follow:
 
 ```d
 enum result = text(
@@ -124,7 +124,7 @@ enum result = text(
 
 The latter form has dramatically less syntactic noise and appears as a single string with expressions inside escaped by `$`. Correctness of the generated code is much easier to assess as well.
 
-Let us also look at a shell command example. Assume `url` is an URL and `file` is an filename, both preprocessed as escaped shell strings. To download `url` into `file` without risking corrupt files in case of incomplete downloads, the code below first downloads into a temporary file with the extension `.frag` and then atomically renames it to the correct name:
+Let us also look at a shell command example. Assume `url` is a URL and `file` is a filename, both preprocessed as escaped shell strings. To download `url` into `file` without risking corrupt files in case of incomplete downloads, the code below first downloads into a temporary file with the extension `.frag` and then atomically renames it to the correct name:
 
 ```d
 executeShell("wget " ~ url ~ " -O" ~ file ~ ".frag && mv " ~ file ~ ".frag " ~ file);
@@ -143,7 +143,7 @@ The interpolated form is, again, the easiest to follow:
 executeShell(i"wget $url -O$file.frag && mv $file.frag $file");
 ```
 
-Last but not least, there are numerous cases in which casual console output can use interpolated strings to reduce on boilerplate and improve clarity:
+Finally, there are numerous cases in which casual console output can use interpolated strings to reduce on boilerplate and improve clarity:
 
 ```d
 writeln("Hello, ", name, ". You are ", age, " years old.");  // interspersion
@@ -153,7 +153,7 @@ writeln(i"Hello, $name. You are $age years old.");           // interpolation
 
 ### Why Yet Another String Interpolation Proposal?
 
-This DIP derives from, and owes much to, the previous work on string interpolation in the D community. The abundance of such work raises the question why a new proposal is needed.
+This DIP derives from, and owes much to, the previous work on string interpolation in the D community. The abundance of such work raises the question of why a new proposal is needed.
 
 This DIP is close to the prior work yet different in key aspects as follows:
 
@@ -166,18 +166,18 @@ We will demonstrate how this DIP achieves all major goals of extant proposals wi
 ## Related Work
 
 * Interpolated strings have been implemented and well-received in many languages.
-For many such examples, see [String Interpolation](https://en.wikipedia.org/wiki/String_interpolation).
+For many such examples see [String Interpolation](https://en.wikipedia.org/wiki/String_interpolation).
 * [Jonathan Marler's Interpolated Strings](http://github.com/dlang/dmd/pull/7988) and [DIP1027](https://github.com/dlang/DIPs/blob/master/DIPs/rejected/DIP1027.md), from which this DIP was derived.
 * [DIP1036](https://github.com/dlang/DIPs/blob/master/DIPs/DIP1036.md), which is as of the time of this writing in review.
 * [C#'s implementation](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/tokens/interpolated#compilation-of-interpolated-strings) which returns a formattable object that user functions can use
-* [Javascript's implementation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals) which passes `string[], args...` to a builder function very similarly to this proposal
+* [JavaScript's implementation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals) which passes `string[], args...` to a builder function very similarly to this proposal
 * Jason Helson submitted a DIP [String Syntax for Compile-Time Sequences](https://github.com/dlang/DIPs/pull/140).
 
 ## Description
 
-D strings have several syntactical form, among which a few that follow the pattern of a letter followed by the string proper. Such include `r"WYSIWYG strings"`, `q"[delimited strings]"`, and `q{token strings}`. Our proposal follows the same pattern by introducing `i"interpolated strings"`.
+D strings have several syntactical forms, among which a few that follow the pattern of a letter followed by the string proper. Such include `r"WYSIWYG strings"`, `q"[delimited strings]"`, and `q{token strings}`. Our proposal follows the same pattern by introducing `i"interpolated strings"`.
 
-An *interpolated string* is a regular D string prefixed with the letter `i`, as in `i"Hello"`. No whitespace is allowed between `i` and the opening quote. We refer to these construct as `i`-strings.
+An *interpolated string* is a regular D string prefixed with the letter `i`, as in `i"Hello"`. No whitespace is allowed between `i` and the opening quote. We refer to this construct as `i`-strings.
 
 An `i`-string is allowed in source code only in one of the following contexts:
 
@@ -192,18 +192,18 @@ In any other context, `i`-strings are illegal.
 For an example of `i`-strings usage, the function call expression:
 
 ```d
-writeln(i"I ate $apples apples and $bananas bananas totalling $(apples + bananas) fruit.")
+writeln(i"I ate $apples apples and $bananas bananas totaling $(apples + bananas) fruit.")
 ```
 
 is lowered into:
 
 ```d
-writeln(__header, "I ate ", apples, " apples and ", bananas, " bananas totalling ", apples + bananas, " fruit.")
+writeln(__header, "I ate ", apples, " apples and ", bananas, " bananas totaling ", apples + bananas, " fruit.")
 ```
 
 The `__header` value, to be discussed later, is generated by the compiler and contains compile-time information about the interpolated string.
 
-The resulting lowered code is subjected to the usual typechecking and has the same semantics as if the lowered code were present in the source.
+The resulting lowered code is subjected to the usual type checking and has the same semantics as if the lowered code were present in the source.
 
 After introducing an intuition of how interpolated string work, let us formalize the syntax and semantics. Lexically:
 
@@ -224,7 +224,7 @@ ArgumentList:
     InterpolatedString , ArgumentList
 ```
 
-Inside an interpolated string, the character `$` is of particular interest because the interpolated string will use it as an escape. If `$` is not followed by an open paren or an identifier, its meaning is unchanged. If `$` is followed by an identifier (which starts with a `_` or alphabetic character) or open parenthesis, the `$` acts as an escape character introducing an interpolated identifier or expression. To render `$` verbatim when followed by an identifier or an open paranthesis, the sequence `$$` shall be used. The contents of the `InterpolatedExpression` must conform to the following grammar:
+Inside an interpolated string, the character `$` is of particular interest because the interpolated string will use it as an escape. If `$` is not followed by an open parenthesis or an identifier, its meaning is unchanged. If `$` is followed by an identifier (which starts with a `_` or alphabetic character) or open parenthesis, the `$` acts as an escape character introducing an interpolated identifier or expression. To render `$` verbatim when followed by an identifier or an open parenthesis, the sequence `$$` shall be used. The contents of the `InterpolatedExpression` must conform to the following grammar:
 
 ```
 Elements:
@@ -240,11 +240,11 @@ Element:
     '$(' AssignExpression ')'
 ```
 
-In the grammar above `Type` is the nonterminal for types, and `AssignExpression` is the nonterminal for general D assignment expressions. For details refer to the current grammar at https://dlang.org/spec/grammar.html.
+In the grammar above `Type` is the non-terminal for types, and `AssignExpression` is the non-terminal for general D assignment expressions. For details refer to the current grammar at https://dlang.org/spec/grammar.html.
 
 The `InterpolatedString` is lowered to a comma-separated list that consists of a header followed by the string fragments interspersed with the expressions escaped by `$`.
 
-Any lexical errors (such as unbalanced `(` and `)`) will be reported during parsing. Then, semantic errors will be reported during the typechecking of the lowered code.
+Any lexical errors (such as an unbalanced `(` and `)`) will be reported during parsing. Then, semantic errors will be reported during the type checking of the lowered code.
 
 ### Normalization of interspersion
 
@@ -305,7 +305,7 @@ is lowered to:
 writeln(__header, "", $greeting, ", ", name, "", exclamation, "");
 ```
 
-The purpose of normalization, as can be seen in the given examples, is to always have the argument list in a fixed pattern: *header*, *string-literal*, *expression*, *string-literal*, *expression*, ...,  *string-literal*.
+The purpose of normalization, as seen in the given examples, is to always have the argument list in a fixed pattern: *header*, *string-literal*, *expression*, *string-literal*, *expression*, ...,  *string-literal*.
 
 ## The Interpolation Header
 
@@ -343,7 +343,7 @@ This concludes the syntax and semantics of the proposed feature.
 
 Why choose the `$` when many popular languages and libraries (Python, C++20, C#) use `{` and `}` as escape characters? Also, why use `$(` and `)` as opposed to `${` and `}`, as perhaps a bash user may be more familiar with?
 
-One essential use of interpolation, specific to D, is for code generation. In generated D code, curly braces `{` and `}` are abundant. Requiring `{{` and `}}` everywhere in the generated code would have been aggravating. Anecdotal evidence has been collected in the creation of this DIP, which initially attempted to use `{` and `}` for escaping: the examples extracted from `std.bitmanip.bitfields` turned out to have numerous bugs, and be difficult to read when corrected:
+One essential use of interpolation, specific to D, is for code generation. In generated D code, curly braces `{` and `}` are abundant. Requiring `{{` and `}}` everywhere in the generated code would have been aggravating. Anecdotal evidence has been collected in the creation of this DIP, which initially attempted to use `{` and `}` for escaping: the examples extracted from `std.bitmanip.bitfields` turned out to have numerous bugs and be difficult to read when corrected:
 
 ```d
 // Using `{` and `}` for escaping, similar to Python's f-strings
@@ -385,7 +385,7 @@ void main(string[] args) {
 }
 ```
 
-A function such as `std.stdio.writeln` may choose to uniformly convert the header to string by means of calling its `toString` method, thus essentially working with interpolated strings without modification. The second possibility is that the function detects the header but "skips" it and ignores the information it provides, which is easy to accommodate on the function implementer's side. Finally, a function may choose to fully support `i`-strings with specialized semantics. We consider this flexibility a key characteristic of the proposed feature that drastically simplifies both its definition, unrestandability, and interoperation with new and existing code.
+A function such as `std.stdio.writeln` may choose to uniformly convert the header to string by means of calling its `toString` method, thus essentially working with interpolated strings without modification. The second possibility is that the function detects the header but "skips" it and ignores the information it provides, which is easy to accommodate on the function implementer's side. Finally, a function may choose to fully support `i`-strings with specialized semantics. We consider this flexibility a key characteristic of the proposed feature that drastically simplifies both its definition, understandability, and interoperation with new and existing code.
 
 A format-string-style function such as `writefln` does not work unchanged with interpolated strings because the lowering is unhelpful:
 
@@ -536,7 +536,7 @@ int x = 42;
 auto s = i"Let's interpolate $x!"  // Error, interpolated string not allowed here
 ```
 
-The remedy is simple and may be suggested by the text of the error message: use a tuple to store the interpolation, or call a function such as `text` or `format` to convert everything to a string:
+The remedy is simple and may be suggested by the text of the error message: use a tuple to store the interpolation or call a function such as `text` or `format` to convert everything to a string:
 
 ```d
 int x = 42;

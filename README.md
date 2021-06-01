@@ -523,8 +523,8 @@ In certain cases, the interpolated string can be passed to `AliasSeq` as well re
 
 ```d
 int x = 42;
-alias Q = AliasSeq!(i"I'm interpolating $x here.");  // OK, use Q as a type
-auto q = AliasSeq!(i"I'm interpolating $x here.");   // OK, store as AliasSeq object
+alias p = AliasSeq!(i"I'm interpolating $x here.");  // p is a value sequence
+auto q = AliasSeq!(i"I'm interpolating $x here.");   // q is an implicit tuple
 ```
 
 ### Limitations and tradeoffs
@@ -542,8 +542,8 @@ The remedy is simple and may be suggested by the text of the error message: use 
 int x = 42;
 auto s = text(i"Let's interpolate $x!");        // OK, store as string
 auto t = tuple(i"Let's interpolate $x!");       // OK, store as tuple
-alias Q = AliasSeq!(i"Let's interpolate $x!");  // OK, use as type
-auto q = AliasSeq!(i"Let's interpolate $x!");   // OK, store as AliasSeq
+alias p = AliasSeq!(i"Let's interpolate $x!");  // OK, value sequence
+auto q = AliasSeq!(i"Let's interpolate $x!");   // OK, store as an implicit tuple
 ```
 
 ## Breaking Changes and Deprecations

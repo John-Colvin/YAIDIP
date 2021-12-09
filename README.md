@@ -175,14 +175,14 @@ For many such examples, see [String Interpolation](https://en.wikipedia.org/wiki
 
 ## Description
 
-D strings have several syntactical form, among which a few that follow the pattern of a letter followed by the string proper. Such include `r"WYSIWYG strings"`, `q"[delimited strings]"`, and `q{token strings}`. Our proposal follows the same pattern by introducing `i"interpolated strings"`.
+D strings have several syntactical forms, among which are those that follow the pattern of a letter followed by the string proper. Such include `r"WYSIWYG strings"`, `q"[delimited strings]"`, and `q{token strings}`. Our proposal follows the same pattern by introducing `i"interpolated strings"`.
 
-An *interpolated string* is a regular D string prefixed with the letter `i`, as in `i"Hello"`. No whitespace is allowed between `i` and the opening quote. We refer to these construct as `i`-strings.
+An *interpolated string* is a regular D string prefixed with the letter `i`, as in `i"Hello"`. No whitespace is allowed between `i` and the opening quote. We refer to these constructs as `i`-strings.
 
 An `i`-string is allowed in source code only in one of the following contexts:
 
 - in the argument list of a function or constructor call;
-- in the argument list of a `mixin`;
+- in the argument list of a string `mixin`;
 - in the argument list of a `pragma(msg)` directive;
 - in the argument list (starting with the second argument) of an `assert` or `static assert` invocation, contingent to fixing [Issue 17378](https://issues.dlang.org/show_bug.cgi?id=17378); and
 - in the argument list of a template instantiation.
@@ -381,11 +381,11 @@ void main(string[] args) {
     auto s = sqlExec(i"INSERT INTO runs VALUES ($(args[0]), $(args.length - 1))");
     // Lowering: --->
     // auto s = sqlExec(InterpolationHeader!("INSERT INTO runs VALUES(", "args[0]", ", ", "args.length - 1", ")")(),
-    //    args[0], $(args.length - 1));
+    //     "INSERT INTO runs VALUES(", args[0], ", ", args.length - 1, ")");
 }
 ```
 
-A function such as `std.stdio.writeln` may choose to uniformly convert the header to string by means of calling its `toString` method, thus essentially working with interpolated strings without modification. The second possibility is that the function detects the header but "skips" it and ignores the information it provides, which is easy to accommodate on the function implementer's side. Finally, a function may choose to fully support `i`-strings with specialized semantics. We consider this flexibility a key characteristic of the proposed feature that drastically simplifies both its definition, unrestandability, and interoperation with new and existing code.
+A function such as `std.stdio.writeln` may choose to uniformly convert the header to string by means of calling its `toString` method, thus essentially working with interpolated strings without modification. The second possibility is that the function detects the header but "skips" it and ignores the information it provides, which is easy to accommodate on the function implementer's side. Finally, a function may choose to fully support `i`-strings with specialized semantics. We consider this flexibility a key characteristic of the proposed feature that drastically simplifies both its definition, understandability, and interoperation with new and existing code.
 
 A format-string-style function such as `writefln` does not work unchanged with interpolated strings because the lowering is unhelpful:
 
@@ -393,7 +393,7 @@ A format-string-style function such as `writefln` does not work unchanged with i
 writefln(i"Hello, %s$name %s$surname!");
 // Lowering: --->
 // writefln(InterpolationHeader!("Hello, %s", "name", " %s", "surname", "!")(),
-//     name, surname);
+//     "Hello, %s", name, " %s", surname, "!");
 ```
 
 However, there is enough information in the interpolated string to allow `writefln` to work transparently with interpolated strings by detecting and processing during compilation the header information:
@@ -470,7 +470,8 @@ mixin(i"int $x = $y;");
 //     "int ", x, " = ", y, ";");
 auto z = mixin(i"$x + 5");
 // Lowering --->
-// auto z = mixin(x, " + 5");
+// auto z = mixin(InterpolationHeader!("", "x", " + 5")(),
+//     "", x, " + 5");
 ```
 
 The interpolation header is ignored by `mixin`s.
@@ -483,7 +484,8 @@ The interpolation header is ignored by `mixin`s.
 enum x = 42;
 pragma(msg, i"x = $x.");
 // Lowering --->
-// pragma(msg, InterpolationHeader!("x = ", "x", ".")(), "x = ", x, ".");
+// pragma(msg, InterpolationHeader!("x = ", "x", ".")(),
+//     "x = ", x, ".");
 ```
 
 `i`-strings are allowed in `pragma(msg)` directives.
@@ -493,7 +495,7 @@ Note that `pragma(msg)` is already variadic. Currently `assert` and `static asse
 ```d
 void fun(int x)(int y) {
     static assert(x < 42, text(i"x is $x, should be less than 42"));
-    assert(y > 42, format(f"y is $y, should be greater than 42"));
+    assert(y > 42, format(i"y is %s$y, should be greater than 42"));
 }
 ```
 

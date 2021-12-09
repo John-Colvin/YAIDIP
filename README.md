@@ -278,7 +278,7 @@ writeln("Hello, world$exclamation");
 is lowered to:
 
 ```D
-writeln(__header, "Hello, world", exclamation);
+writeln(__header, "Hello, world", exclamation, "");
 ```
 
 Finally, if an `i`-string contains two consecutive expansions, the lowering will introduce an empty string literal in between. Example:

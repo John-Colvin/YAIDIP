@@ -260,7 +260,7 @@ To effect these rules, the lowering may introduce empty strings as follows.
 If an interpolated string starts with an escape sequence, an empty string is always introduced before it in the expansion. Example:
 
 ```D
-writeln("$name, hi!");
+writeln(i"$name, hi!");
 ```
 
 is lowered to:
@@ -272,7 +272,7 @@ writeln(__header, "", name, " hi!");
 If an interpolated string ends with an escape sequence, an empty string is always introduced after it in the expansion. Example:
 
 ```D
-writeln("Hello, world$exclamation");
+writeln(i"Hello, world$exclamation");
 ```
 
 is lowered to:
@@ -284,7 +284,7 @@ writeln(__header, "Hello, world", exclamation, "");
 Finally, if an `i`-string contains two consecutive expansions, the lowering will introduce an empty string literal in between. Example:
 
 ```D
-writeln("Hello, $name$exclamation How are you?");
+writeln(i"Hello, $name$exclamation How are you?");
 ```
 
 is lowered to:
@@ -296,7 +296,7 @@ writeln(__header, "Hello", name, "", exclamation, " How are you?");
 These rules can apply simultaneously on the same `i`-string. Example:
 
 ```D
-writeln("$greeting, $name$exclamation");
+writeln(i"$greeting, $name$exclamation");
 ```
 
 is lowered to:
@@ -321,7 +321,7 @@ struct InterpolationHeader(_parts...) {
 The argument to the instantiation of `Header` is the interpolation string deconstructed into parts and normalized. Example:
 
 ```D
-writeln("$greeting, $name$exclamation");
+writeln(i"$greeting, $name$exclamation");
 ```
 
 is lowered to:
@@ -487,8 +487,6 @@ pragma(msg, i"x = $x.");
 // pragma(msg, InterpolationHeader!("x = ", "x", ".")(),
 //     "x = ", x, ".");
 ```
-
-`i`-strings are allowed in `pragma(msg)` directives.
 
 Note that `pragma(msg)` is already variadic. Currently `assert` and `static assert` are not variadic, so they need to be helped with `text` or `format`:
 

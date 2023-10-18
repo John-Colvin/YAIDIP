@@ -312,6 +312,9 @@ The purpose of normalization, as can be seen in the given examples, is to always
 Every `i`-string lowering introduces a header rvalue object that so far we conventionally denoted as `__header` (the exact name is uniquely compiler-generated and hence inaccessible). The header is a stateless `struct` that contains exclusively compile-time information about the interpolation, generated from the following template:
 
 ```D
+// given a core module you can import to match with an is expression if desired
+module core.interpolation;
+
 struct InterpolationHeader(_parts...) {
     alias parts = _parts;
     string toString() { return null; }
@@ -327,7 +330,10 @@ writeln("$greeting, $name$exclamation");
 is lowered to:
 
 ```D
-writeln(InterpolationHeader!("", "greeting", ", ", "name", "", "exclamation", "")(),
+// note the fullly qualified name here including import
+// is to ensure the header name cannot be overridden by
+// any user type and is thus uniquely identified
+writeln(.object.imported!"core.interpolation".InterpolationHeader!("", "greeting", ", ", "name", "", "exclamation", "")(),
     "", $greeting, ", ", name, "", exclamation, "");
 ```
 
@@ -375,12 +381,12 @@ void main(string[] args) {
     import std.stdio;
     writeln(i"The program $(args[0]) received $(args.length - 1) arguments.");
     // Lowering: --->
-    // writeln(InterpolationHeader!("The program ", "args[0]", " received ", "args.length - 1", " arguments.")(),
+    // writeln(.object.imported!"core.interpolation".InterpolationHeader!("The program ", "args[0]", " received ", "args.length - 1", " arguments.")(),
     //     "The program ", args[0], " received ", args.length - 1, " arguments.");
 
     auto s = sqlExec(i"INSERT INTO runs VALUES ($(args[0]), $(args.length - 1))");
     // Lowering: --->
-    // auto s = sqlExec(InterpolationHeader!("INSERT INTO runs VALUES(", "args[0]", ", ", "args.length - 1", ")")(),
+    // auto s = sqlExec(.object.imported!"core.interpolation".InterpolationHeader!("INSERT INTO runs VALUES(", "args[0]", ", ", "args.length - 1", ")")(),
     //     "INSERT INTO runs VALUES(", args[0], ", ", args.length - 1, ")");
 }
 ```
@@ -392,7 +398,7 @@ A format-string-style function such as `writefln` does not work unchanged with i
 ```D
 writefln(i"Hello, %s$name %s$surname!");
 // Lowering: --->
-// writefln(InterpolationHeader!("Hello, %s", "name", " %s", "surname", "!")(),
+// writefln(.object.imported!"core.interpolation".InterpolationHeader!("Hello, %s", "name", " %s", "surname", "!")(),
 //     "Hello, %s", name, " %s", surname, "!");
 ```
 
@@ -414,7 +420,7 @@ void main(string[] args) {
     import std.stdio;
     auto t1 = tuple(i"The program $(args[0]) received $(args.length - 1) arguments.");
     // Lowering: --->
-    // auto t1 = tuple(InterpolationHeader!("The program ", "args[0]", " received ", "args.length - 1", " arguments.")(),
+    // auto t1 = tuple(.object.imported!"core.interpolation".InterpolationHeader!("The program ", "args[0]", " received ", "args.length - 1", " arguments.")(),
     //    "The program ", args[0], " received ", args.length - 1, " arguments.");
     writeln(t1.expand);
 }
@@ -442,7 +448,7 @@ Using interpolation, a manipulators-based approach can be used elegantly and imp
 void fun(int x) {
     writeln(i"$dec$x in hexadecimal is 0x$hex$x.");
     // Lowering: --->
-    // writeln(InterpolationHeader!("", "dec", "", "x", " in hexadecimal is 0x", "hex", "", "x", ".")(),
+    // writeln(.object.imported!"core.interpolation".InterpolationHeader!("", "dec", "", "x", " in hexadecimal is 0x", "hex", "", "x", ".")(),
     //     "", dec, "", x, " in hexadecimal is 0x", hex, "", x, ".");
 }
 ```
@@ -453,7 +459,7 @@ There is no need for defining, implementing, and memorizing a *sui generis* mini
 void fun(double x) {
     writeln(i"$x can be written as $scientific$x or $(fixed(20, 10))$x.");
     // Lowering: --->
-    // writeln(InterpolationHeader!("", "x", " can be written as ", scientific, "", x, " or ", fixed(20, 10), "", x, ".")(),
+    // writeln(.object.imported!"core.interpolation".InterpolationHeader!("", "x", " can be written as ", scientific, "", x, " or ", fixed(20, 10), "", x, ".")(),
     //     x, " can be written as ", scientific, "", x, " or ", fixed(20, 10), "", x, ".");
 }
 ```
@@ -466,11 +472,11 @@ void fun(double x) {
 immutable x = "asd", y = 42;
 mixin(i"int $x = $y;");
 // Lowering --->
-// mixin(InterpolationHeader!("int ", "x", " = ", "y", ";")(),
+// mixin(.object.imported!"core.interpolation".InterpolationHeader!("int ", "x", " = ", "y", ";")(),
 //     "int ", x, " = ", y, ";");
 auto z = mixin(i"$x + 5");
 // Lowering --->
-// auto z = mixin(InterpolationHeader!("", "x", " + 5")(),
+// auto z = mixin(.object.imported!"core.interpolation".InterpolationHeader!("", "x", " + 5")(),
 //     "", x, " + 5");
 ```
 
@@ -484,7 +490,7 @@ The interpolation header is ignored by `mixin`s.
 enum x = 42;
 pragma(msg, i"x = $x.");
 // Lowering --->
-// pragma(msg, InterpolationHeader!("x = ", "x", ".")(),
+// pragma(msg, .object.imported!"core.interpolation".InterpolationHeader!("x = ", "x", ".")(),
 //     "x = ", x, ".");
 ```
 
@@ -514,7 +520,7 @@ alias Calculator = Grammar!(
     Factor := $identifier | '(' Expression ')' "
 );
 // Lowering: --->
-// alias Calculator = Grammar!(InterpolationHeader!(...)(),
+// alias Calculator = Grammar!(.object.imported!"core.interpolation".InterpolationHeader!(...)(),
 //     "Expression := Term + Term
 //     Term := Factor * Factor
 //     Factor := ", identifier, " | '(' Expression ')' "

@@ -260,7 +260,7 @@ To effect these rules, the lowering may introduce empty strings as follows.
 If an interpolated string starts with an escape sequence, an empty string is always introduced before it in the expansion. Example:
 
 ```D
-writeln("$name, hi!");
+writeln(i"$name, hi!");
 ```
 
 is lowered to:
@@ -272,7 +272,7 @@ writeln(__header, "", name, " hi!");
 If an interpolated string ends with an escape sequence, an empty string is always introduced after it in the expansion. Example:
 
 ```D
-writeln("Hello, world$exclamation");
+writeln(i"Hello, world$exclamation");
 ```
 
 is lowered to:
@@ -284,7 +284,7 @@ writeln(__header, "Hello, world", exclamation, "");
 Finally, if an `i`-string contains two consecutive expansions, the lowering will introduce an empty string literal in between. Example:
 
 ```D
-writeln("Hello, $name$exclamation How are you?");
+writeln(i"Hello, $name$exclamation How are you?");
 ```
 
 is lowered to:
@@ -296,13 +296,13 @@ writeln(__header, "Hello", name, "", exclamation, " How are you?");
 These rules can apply simultaneously on the same `i`-string. Example:
 
 ```D
-writeln("$greeting, $name$exclamation");
+writeln(i"$greeting, $name$exclamation");
 ```
 
 is lowered to:
 
 ```D
-writeln(__header, "", $greeting, ", ", name, "", exclamation, "");
+writeln(__header, "", greeting, ", ", name, "", exclamation, "");
 ```
 
 The purpose of normalization, as can be seen in the given examples, is to always have the argument list in a fixed pattern: *header*, *string-literal*, *expression*, *string-literal*, *expression*, ...,  *string-literal*.
@@ -324,7 +324,7 @@ struct InterpolationHeader(_parts...) {
 The argument to the instantiation of `Header` is the interpolation string deconstructed into parts and normalized. Example:
 
 ```D
-writeln("$greeting, $name$exclamation");
+writeln(i"$greeting, $name$exclamation");
 ```
 
 is lowered to:
@@ -334,7 +334,7 @@ is lowered to:
 // is to ensure the header name cannot be overridden by
 // any user type and is thus uniquely identified
 writeln(.object.imported!"core.interpolation".InterpolationHeader!("", "greeting", ", ", "name", "", "exclamation", "")(),
-    "", $greeting, ", ", name, "", exclamation, "");
+    "", greeting, ", ", name, "", exclamation, "");
 ```
 
 Note how the header gives the callee complete access to the strings corresponding to the expressions passed in.

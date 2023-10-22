@@ -10,7 +10,7 @@ https://github.com/dlang/dmd/pull/15715
 | Review Count:   | 0                                                                 |
 | Author:         | Andrei Alexandrescu<br>John Colvin john.loughran.colvin@gmail.com |
 | Implementation: |                                                                   |
-| Status: Obsolete        |                                                                   |
+| Status: | Obsolete                                                          |
 
 ## Abstract
 

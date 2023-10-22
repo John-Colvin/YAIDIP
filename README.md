@@ -1,12 +1,16 @@
 # String Interpolation
 
+This proposal is obsolete. See this dmd PR instead:
+
+https://github.com/dlang/dmd/pull/15715
+
 | Field           | Value                                                             |
 |-----------------|-------------------------------------------------------------------|
 | DIP:            | xxxx                                                              |
 | Review Count:   | 0                                                                 |
 | Author:         | Andrei Alexandrescu<br>John Colvin john.loughran.colvin@gmail.com |
 | Implementation: |                                                                   |
-| Status:         |                                                                   |
+| Status: Obsolete        |                                                                   |
 
 ## Abstract
 

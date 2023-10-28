@@ -498,8 +498,6 @@ pragma(msg, i"x = $x.");
 //     "x = ", x, ".");
 ```
 
-`i`-strings are allowed in `pragma(msg)` directives.
-
 Note that `pragma(msg)` is already variadic. Currently `assert` and `static assert` are not variadic, so they need to be helped with `text` or `format`:
 
 ```d
